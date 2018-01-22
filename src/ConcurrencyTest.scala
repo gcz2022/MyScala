@@ -11,19 +11,15 @@ object ConcurrencyTest {
   val tables = List("store_sales")
   val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
 
-  def addPrefix(cmd: String, database: String) = {
-    s"""
-       |beeline -u "jdbc:hive2://localhost:10000" -e
-       |"use ${database};
-       |${cmd};"
-       |""".stripMargin
-
+  def addPrefix(cmd: String, database: String): Seq[String] = {
+    Seq("beeline", "-u", s"jdbc:hive2://localhost:10000/$database", "-e", cmd)
   }
 
   def dropIndexCmd(index: String, table: String, database: String) = {
     val cmd = s"""
-       |drop oindex ${index} from ${table}
+       |drop oindex ${index} on ${table}
        |""".stripMargin
+    println(s"running: ${addPrefix(cmd, database)}")
     addPrefix(cmd, database)
   }
 
