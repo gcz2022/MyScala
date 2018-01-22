@@ -13,6 +13,13 @@ object ConcurrencyTest {
   val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
   val futures = mutable.ArrayBuffer[(Future[Int], String)]()
 
+  val REFRESH_INDEX = 1
+  val DROP_INDEX = 2
+
+  val SCAN_DATA = 1
+  val INSERT_DATA = 2
+  val DROP_DATA = 3
+
   def addToFutures[T](func: => Int, hints: String) = {
     futures += Future {
       func
@@ -24,7 +31,7 @@ object ConcurrencyTest {
   }
 
   def dropTableCmd(table: String, database: String) = {
-    val cmd = s"drop $table"
+    val cmd = s"drop table $table"
     val res = addPrefix(cmd, database)
     println(s"running: $res")
     res
@@ -82,7 +89,7 @@ object ConcurrencyTest {
       for (table <- tables) {
         val index = indices(0)
         dropIndicesFromSameTable(indices, table, database)
-//        dropDataAndRefreshIndex(index, table, database)
+        dropDataAndRefreshIndex(index, table, database)
       }
     }
   }
