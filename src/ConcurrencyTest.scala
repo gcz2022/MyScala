@@ -1,5 +1,7 @@
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success}
 import sys.process._
 
 object ConcurrencyTest {
@@ -25,16 +27,28 @@ object ConcurrencyTest {
   }
 
   def main(args: Array[String]) = {
-    val indexOperationFutures = mutable.ArrayBuffer[Future[Int]]()
-    val dataOperationFutures = mutable.ArrayBuffer[Future[Int]]()
+    val indexOperationFutures = mutable.ArrayBuffer[(Future[Int], String)]()
+    val dataOperationFutures = mutable.ArrayBuffer[(Future[Int], String)]()
     for (format <- formats) {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
         for (index <- indices) {
           indexOperationFutures += Future {
             dropIndexCmd(index, table, database) !
-          }
+          } -> s"drop index $index of table $table, database $database"
         }
+      }
+    }
+    indexOperationFutures.foreach {
+      future => future._1.onComplete {
+        case Success(value) => println(s"Successfully exec ${future._2}")
+        case Failure(e) => e.printStackTrace
+      }
+    }
+    dataOperationFutures.foreach {
+      future => future._1.onComplete {
+        case Success(value) => println(s"Successfully exec ${future._2}")
+        case Failure(e) => println(s"Failed exec ${future._2}"); e.printStackTrace
       }
     }
   }
