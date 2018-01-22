@@ -3,6 +3,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 import sys.process._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object ConcurrencyTest {
   val scale = 30
@@ -40,13 +41,17 @@ object ConcurrencyTest {
       }
     }
     indexOperationFutures.foreach {
-      future => future._1.onComplete {
+      future =>
+        Await.result(future._1, Duration.Inf)
+        future._1.onComplete {
         case Success(value) => println(s"Successfully exec ${future._2}")
         case Failure(e) => e.printStackTrace
       }
     }
     dataOperationFutures.foreach {
-      future => future._1.onComplete {
+      future =>
+        Await.result(future._1, Duration.Inf)
+        future._1.onComplete {
         case Success(value) => println(s"Successfully exec ${future._2}")
         case Failure(e) => println(s"Failed exec ${future._2}"); e.printStackTrace
       }
