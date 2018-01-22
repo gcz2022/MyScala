@@ -10,8 +10,7 @@ object ConcurrencyTest {
 //  val formats = List("oap", "parquet")
   val formats = List("oap")
   val tables = List("store_sales")
-//  val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
-  val indices = List("store_sales_ss_item_sk1_index")
+  val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
 
   def addPrefix(cmd: String, database: String): Seq[String] = {
     Seq("beeline", "-u", s"jdbc:hive2://localhost:10000/$database", "-e", cmd)
