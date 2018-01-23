@@ -150,6 +150,11 @@ object ConcurrencyTest {
 
     rebuildIndexScript = args(0)
     regenDataScript = args(1)
+    val testIndexOp = args(2).toInt
+    val testDataOp = args(3).toInt
+
+    val testIndexOpsSet = Set(testIndexOp)
+    val testDataOpsSet = Set(testDataOp)
 
     for (format <- formats) {
       val database = s"${format}tpcds${scale}"
@@ -157,8 +162,8 @@ object ConcurrencyTest {
         val index = indices(0)
 //        dropIndicesFromSameTable(indices, table, database)
 //        dropDataAndRefreshIndex(index, table, database)
-        for (indexOps <- Seq(REFRESH_INDEX, DROP_INDEX)) {
-          for (dataOps <- Seq(SCAN_DATA, INSERT_DATA, DROP_DATA)) {
+        for (indexOps <- testIndexOpsSet) {
+          for (dataOps <- testDataOpsSet) {
             val indexHint = indexHintsMap(indexOps)
             val dataHint = dataHintsMap(dataOps)
             println(s"************************ Testing $indexHint & $dataHint ************************")
