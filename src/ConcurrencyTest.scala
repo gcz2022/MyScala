@@ -10,6 +10,7 @@ object ConcurrencyTest {
 //  val formats = List("oap", "parquet")
   val formats = List("oap")
   val tables = List("store_sales")
+  val filterColumn = "ss_item_sk"
   val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
   val futures = mutable.ArrayBuffer[(Future[Int], String)]()
 
@@ -48,7 +49,7 @@ object ConcurrencyTest {
     indexOperationHint: String) = {
 
     def scanDataCmd(index: String, table: String, database: String) = {
-      val cmd = s"select * from $table where $index < 200"
+      val cmd = s"select * from $table where $filterColumn < 200"
       val res = addPrefix(cmd, database)
       println(s"running: $res")
       res
