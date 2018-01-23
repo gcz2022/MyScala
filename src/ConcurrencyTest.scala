@@ -161,7 +161,7 @@ object ConcurrencyTest {
           for (dataOps <- Seq(SCAN_DATA, INSERT_DATA, DROP_DATA)) {
             val indexHint = indexHintsMap(indexOps)
             val dataHint = dataHintsMap(dataOps)
-            println(s"********** Testing $indexHint & $dataHint **********")
+            println(s"************************ Testing $indexHint & $dataHint ************************")
             testDataAndIndexOperation(dataOps, indexOps, index, table, database, dataHint, indexHint)
             if (indexOps == DROP_INDEX) {
               rebuildIndex
