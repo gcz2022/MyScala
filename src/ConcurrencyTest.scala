@@ -48,7 +48,7 @@ object ConcurrencyTest {
     indexOperationHint: String) = {
 
     def scanDataCmd(index: String, table: String, database: String) = {
-      val cmd = s"select * from table $table where $index < 200"
+      val cmd = s"select * from $table where $index < 200"
       val res = addPrefix(cmd, database)
       println(s"running: $res")
       res
@@ -135,7 +135,22 @@ object ConcurrencyTest {
     waitForTheEndAndPrintResAndClear
   }
 
+  def regenData = {
+    regenDataScript !
+  }
+
+  def rebuildIndex = {
+    rebuildIndexScript !
+  }
+
+  var rebuildIndexScript: String = _
+  var regenDataScript: String = _
+
   def main(args: Array[String]) = {
+
+    rebuildIndexScript = args(0)
+    regenDataScript = args(1)
+
     for (format <- formats) {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
@@ -148,6 +163,13 @@ object ConcurrencyTest {
             val dataHint = dataHintsMap(dataOps)
             println(s"********** Testing $indexHint & $dataHint **********")
             testDataAndIndexOperation(dataOps, indexOps, index, table, database, dataHint, indexHint)
+            if (indexOps == DROP_INDEX) {
+              rebuildIndex
+            }
+            if (indexOps == DROP_DATA) {
+              regenData
+              rebuildIndex
+            }
           }
         }
       }
