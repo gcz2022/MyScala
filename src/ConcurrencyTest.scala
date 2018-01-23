@@ -49,7 +49,7 @@ object ConcurrencyTest {
     indexOperationHint: String) = {
 
     def scanDataCmd(index: String, table: String, database: String) = {
-      val cmd = s"select * from $table where $filterColumn < 200"
+      val cmd = s"select * from $table where $filterColumn < 20"
       val res = addPrefix(cmd, database)
       println(s"running: $res")
       res
@@ -151,11 +151,13 @@ object ConcurrencyTest {
 
     rebuildIndexScript = args(0)
     regenDataScript = args(1)
-    val testIndexOp = args(2).toInt
-    val testDataOp = args(3).toInt
 
-    val testIndexOpsSet = Set(testIndexOp)
-    val testDataOpsSet = Set(testDataOp)
+    // Default to test all cases
+    val (testIndexOpsSet, testDataOpsSet) = if (args.length > 2) {
+      (Set(args(2).toInt), Set(args(3).toInt))
+    } else {
+      (Set(REFRESH_INDEX, DROP_INDEX), Set(SCAN_DATA, INSERT_DATA, DROP_DATA))
+    }
 
     for (format <- formats) {
       val database = s"${format}tpcds${scale}"
