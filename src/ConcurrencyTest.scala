@@ -137,11 +137,13 @@ object ConcurrencyTest {
   }
 
   def regenData = {
-    regenDataScript !
+    addToFutures(regenDataScript !, "Regen data")
+    waitForTheEndAndPrintResAndClear
   }
 
   def rebuildIndex = {
-    rebuildIndexScript !
+    addToFutures(rebuildIndexScript !, "Rebuild index")
+    waitForTheEndAndPrintResAndClear
   }
 
   var rebuildIndexScript: String = _
@@ -163,7 +165,8 @@ object ConcurrencyTest {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
         val index = indices(0)
-//        dropIndicesFromSameTable(indices, table, database)
+          println(s"************************ Testing drop indicies from same table ************************")
+          dropIndicesFromSameTable(indices, table, database)
 //        dropDataAndRefreshIndex(index, table, database)
         for (indexOps <- testIndexOpsSet) {
           for (dataOps <- testDataOpsSet) {
@@ -172,9 +175,11 @@ object ConcurrencyTest {
             println(s"************************ Testing $indexHint & $dataHint ************************")
             testDataAndIndexOperation(dataOps, indexOps, index, table, database, dataHint, indexHint)
             if (indexOps == DROP_INDEX) {
+              println("Rebuilding index")
               rebuildIndex
             }
-            if (indexOps == DROP_DATA) {
+            if (dataOps == DROP_DATA) {
+              println("Regening data")
               regenData
               rebuildIndex
             }
