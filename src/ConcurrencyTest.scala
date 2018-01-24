@@ -76,13 +76,6 @@ object ConcurrencyTest {
       res
     }
 
-    def showIndexCmd(table: String, database: String) = {
-      val cmd = s"show oindex from $table"
-      val res = addPrefix(cmd, database)
-      println(s"running: $res")
-      res
-    }
-
     // Compute first
     val scanDataRightAnswer = if (codeForData == SCAN_DATA) {
       scanDataCmd(index, table, database) !!
@@ -113,6 +106,13 @@ object ConcurrencyTest {
     }
 
     waitForTheEndAndPrintResAndClear
+  }
+
+  def showIndexCmd(table: String, database: String) = {
+    val cmd = s"show oindex from $table"
+    val res = addPrefix(cmd, database)
+    println(s"running: $res")
+    res
   }
 
   def refreshIndexCmd(index: String, table: String, database: String) = {
@@ -152,30 +152,43 @@ object ConcurrencyTest {
   }
 
   def refreshOrDropIndicesFromSameTable(indices: Seq[String], table: String, database: String) = {
+
+    val dropIndexAssertion0 = (ans: String) => {
+      assert(! (showIndexCmd(table, database) !!).contains(indices(0)))
+    }
+
+    val dropIndexAssertion1 = (ans: String) => {
+      assert(! (showIndexCmd(table, database) !!).contains(indices(1)))
+    }
+
     println(s"************************ " +
-      s"Testing drop indicies from same table ************************")
+    s"Testing drop indicies from same table ************************")
     addToFutures(dropIndexCmd(indices(0), table, database) !!,
-      s"Drop index ${indices(0)} of table $table, database $database")
+      s"Drop index ${indices(0)} of table $table, database $database",
+        dropIndexAssertion0
+    )
     addToFutures(dropIndexCmd(indices(1), table, database) !!,
-      s"Drop index ${indices(1)} of table $table, database $database")
+      s"Drop index ${indices(1)} of table $table, database $database",
+        dropIndexAssertion1)
     waitForTheEndAndPrintResAndClear
     rebuildIndex
 
     println(s"************************ " +
-      s"Testing drop index and refresh index from same table ************************")
+    s"Testing drop index and refresh index from same table ************************")
     addToFutures(dropIndexCmd(indices(0), table, database) !!,
-      s"Drop index ${indices(0)} of table $table, database $database")
+      s"Drop index ${indices(0)} of table $table, database $database",
+        dropIndexAssertion0)
     addToFutures(refreshIndexCmd(indices(1), table, database) !!,
-      s"Refresh index ${indices(1)} of table $table, database $database")
+    s"Refresh index ${indices(1)} of table $table, database $database")
     waitForTheEndAndPrintResAndClear
     rebuildIndex
 
     println(s"************************ " +
-      s"Testing refresh indicies from same table ************************")
+    s"Testing refresh indicies from same table ************************")
     addToFutures(refreshIndexCmd(indices(0), table, database) !!,
-      s"Refresh index ${indices(0)} of table $table, database $database")
+    s"Refresh index ${indices(0)} of table $table, database $database")
     addToFutures(refreshIndexCmd(indices(1), table, database) !!,
-      s"Refresh index ${indices(1)} of table $table, database $database")
+    s"Refresh index ${indices(1)} of table $table, database $database")
     waitForTheEndAndPrintResAndClear
     rebuildIndex
   }
