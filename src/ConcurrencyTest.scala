@@ -134,15 +134,11 @@ object ConcurrencyTest {
   }
 
   def waitForTheEndAndPrintResAndClear = {
-    Await.result(Future.sequence(futures.map(_._1)), Duration.Inf)
     futures.foreach {
       future =>
-        future._1.onComplete {
-          case Success(value) => /* future._3 does assertion*/
-            future._3(value)
-            println(s"Assertion passed ${future._2}")
-          case Failure(e) => println(s"Failed exec ${future._2}"); e.printStackTrace
-        }
+         val value = Await.result(future._1, Duration.Inf)
+         future._3(value)
+         println(s"Assertion passed ${future._2}")
     }
     futures.clear()
   }
@@ -185,11 +181,13 @@ object ConcurrencyTest {
   }
 
   def regenData = {
+    println("In regening")
     addToFutures(regenDataScript !!, "Regen data")
     waitForTheEndAndPrintResAndClear
   }
 
   def rebuildIndex = {
+    println("In rebuilding index")
     addToFutures(rebuildIndexScript !!, "Rebuild index")
     waitForTheEndAndPrintResAndClear
   }
@@ -221,11 +219,9 @@ object ConcurrencyTest {
             val dataHint = dataHintsMap(dataOps)
             testDataAndIndexOperation(dataOps, indexOps, index, table, database, dataHint, indexHint)
             if (indexOps == DROP_INDEX) {
-              println("Rebuilding index")
               rebuildIndex
             }
             if (dataOps == DROP_DATA) {
-              println("Regening data")
               regenData
               rebuildIndex
             }
