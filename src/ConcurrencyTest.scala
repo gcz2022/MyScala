@@ -71,15 +71,6 @@ object ConcurrencyTest {
       res
     }
 
-    def refreshIndexCmd(index: String, table: String, database: String) = {
-      val cmd = s"""
-                   |refresh oindex ${index} on ${table}
-                   |""".stripMargin
-      val res = addPrefix(cmd, database)
-      println(s"running: $res")
-      res
-    }
-
     println(s"************************ " +
       s"Testing $indexOperationHint & $dataOperationHint ************************")
 
@@ -98,6 +89,15 @@ object ConcurrencyTest {
     }
 
     waitForTheEndAndPrintResAndClear
+  }
+
+  def refreshIndexCmd(index: String, table: String, database: String) = {
+    val cmd = s"""
+                 |refresh oindex ${index} on ${table}
+                 |""".stripMargin
+    val res = addPrefix(cmd, database)
+    println(s"running: $res")
+    res
   }
 
   def dropIndexCmd(index: String, table: String, database: String) = {
@@ -129,14 +129,29 @@ object ConcurrencyTest {
       s"Refresh index $index, table $table, database $database")
   }
 
-  def dropIndicesFromSameTable(indices: Seq[String], table: String, database: String) = {
+  def refreshOrDropIndicesFromSameTable(indices: Seq[String], table: String, database: String) = {
     println(s"************************ " +
       s"Testing drop indicies from same table ************************")
-
     addToFutures(dropIndexCmd(indices(0), table, database) !,
       s"Drop index ${indices(0)} of table $table, database $database")
     addToFutures(dropIndexCmd(indices(1), table, database) !,
       s"Drop index ${indices(1)} of table $table, database $database")
+    waitForTheEndAndPrintResAndClear
+
+    println(s"************************ " +
+      s"Testing drop index and refresh index from same table ************************")
+    addToFutures(dropIndexCmd(indices(0), table, database) !,
+      s"Drop index ${indices(0)} of table $table, database $database")
+    addToFutures(refreshIndexCmd(indices(1), table, database) !,
+      s"Refresh index ${indices(1)} of table $table, database $database")
+    waitForTheEndAndPrintResAndClear
+
+    println(s"************************ " +
+      s"Testing refresh indicies from same table ************************")
+    addToFutures(refreshIndexCmd(indices(0), table, database) !,
+      s"Refresh index ${indices(0)} of table $table, database $database")
+    addToFutures(refreshIndexCmd(indices(1), table, database) !,
+      s"Refresh index ${indices(1)} of table $table, database $database")
     waitForTheEndAndPrintResAndClear
   }
 
@@ -169,7 +184,7 @@ object ConcurrencyTest {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
         val index = indices(0)
-          dropIndicesFromSameTable(indices, table, database)
+          refreshOrDropIndicesFromSameTable(indices, table, database)
 //        dropDataAndRefreshIndex(index, table, database)
         for (indexOps <- testIndexOpsSet) {
           for (dataOps <- testDataOpsSet) {
