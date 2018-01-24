@@ -80,20 +80,21 @@ object ConcurrencyTest {
       res
     }
 
-    codeForData match {
-      case SCAN_DATA =>
-        addToFutures(scanDataCmd(index, table, database) !, dataOperationHint)
-      case INSERT_DATA =>
-        addToFutures(insertDataCmd(table, database) !, dataOperationHint)
-      case DROP_DATA =>
-        addToFutures(dropDataCmd(table, database) !, dataOperationHint)
-    }
+    println(s"************************ " +
+      s"Testing $indexOperationHint & $dataOperationHint ************************")
 
-    codeForIndex match {
-      case REFRESH_INDEX =>
-        addToFutures(refreshIndexCmd(index, table, database) !, indexOperationHint)
-      case DROP_INDEX =>
+    (codeForData, codeForIndex) match {
+      // First submit the drop/insert operation, this order is more likely to produce exceptions
+      case (DROP_DATA, _) =>
+        addToFutures(dropDataCmd(table, database) !, dataOperationHint)
+      case (_, DROP_INDEX) =>
         addToFutures(dropIndexCmd(index, table, database) !, indexOperationHint)
+      case (INSERT_DATA, _) =>
+        addToFutures(insertDataCmd(table, database) !, dataOperationHint)
+      case (_, REFRESH_INDEX) =>
+        addToFutures(refreshIndexCmd(index, table, database) !, indexOperationHint)
+      case (SCAN_DATA, _) =>
+        addToFutures(scanDataCmd(index, table, database) !, dataOperationHint)
     }
 
     waitForTheEndAndPrintResAndClear
@@ -129,6 +130,9 @@ object ConcurrencyTest {
   }
 
   def dropIndicesFromSameTable(indices: Seq[String], table: String, database: String) = {
+    println(s"************************ " +
+      s"Testing drop indicies from same table ************************")
+
     addToFutures(dropIndexCmd(indices(0), table, database) !,
       s"Drop index ${indices(0)} of table $table, database $database")
     addToFutures(dropIndexCmd(indices(1), table, database) !,
@@ -165,14 +169,12 @@ object ConcurrencyTest {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
         val index = indices(0)
-          println(s"************************ Testing drop indicies from same table ************************")
           dropIndicesFromSameTable(indices, table, database)
 //        dropDataAndRefreshIndex(index, table, database)
         for (indexOps <- testIndexOpsSet) {
           for (dataOps <- testDataOpsSet) {
             val indexHint = indexHintsMap(indexOps)
             val dataHint = dataHintsMap(dataOps)
-            println(s"************************ Testing $indexHint & $dataHint ************************")
             testDataAndIndexOperation(dataOps, indexOps, index, table, database, dataHint, indexHint)
             if (indexOps == DROP_INDEX) {
               println("Rebuilding index")
