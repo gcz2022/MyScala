@@ -1,17 +1,17 @@
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
 import sys.process._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object ConcurrencyTest {
   val scale = 30
-//  val formats = List("oap", "parquet")
+  // val formats = List("oap", "parquet")
   val formats = List("oap")
   val tables = List("store_sales")
   val filterColumn = "ss_item_sk"
   val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
+  // the last 2 parameters are hints & assertion check function
   val futures = mutable.ArrayBuffer[(Future[String], String, (String) => Unit)]()
 
   val REFRESH_INDEX = 1
@@ -135,14 +135,14 @@ object ConcurrencyTest {
 
   def waitForTheEndAndPrintResAndClear = {
     futures.foreach {
-      future =>
-	 try {
-            val value = Await.result(future._1, Duration.Inf)
-            future._3(value)
-            println(s"Assertion passed ${future._2}")
-         } catch {
+      future => try {
+        val value = Await.result(future._1, Duration.Inf)
+        // Do result check, assertion
+        future._3(value)
+        println(s"Assertion passed ${future._2}")
+      } catch {
            case e: Exception => e.printStackTrace()
-         }
+      }
     }
     futures.clear()
   }
