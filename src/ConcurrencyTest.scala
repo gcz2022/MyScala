@@ -136,9 +136,13 @@ object ConcurrencyTest {
   def waitForTheEndAndPrintResAndClear = {
     futures.foreach {
       future =>
-         val value = Await.result(future._1, Duration.Inf)
-         future._3(value)
-         println(s"Assertion passed ${future._2}")
+	 try {
+            val value = Await.result(future._1, Duration.Inf)
+            future._3(value)
+            println(s"Assertion passed ${future._2}")
+         } catch {
+           case e: Exception => e.printStackTrace()
+         }
     }
     futures.clear()
   }
@@ -224,8 +228,8 @@ object ConcurrencyTest {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
         val index = indices(0)
-//          refreshOrDropIndicesFromSameTable(indices, table, database)
-//        dropDataAndRefreshIndex(index, table, database)
+        refreshOrDropIndicesFromSameTable(indices, table, database)
+        dropDataAndRefreshIndex(index, table, database)
         for (indexOps <- testIndexOpsSet) {
           for (dataOps <- testDataOpsSet) {
             val indexHint = indexHintsMap(indexOps)
