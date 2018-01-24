@@ -87,17 +87,17 @@ object ConcurrencyTest {
     val scanDataRightAnswer = if (codeForData == SCAN_DATA) {
       scanDataCmd(index, table, database) !!
     } else {
-      _
+      "No answer"
     }
 
     println(s"************************ " +
       s"Testing $indexOperationHint & $dataOperationHint ************************")
 
     codeForData match {
-      case (SCAN_DATA, _) =>
+      case SCAN_DATA =>
         addToFutures(scanDataCmd(index, table, database) !!, dataOperationHint,
           (ans: String) => assert(ans == scanDataRightAnswer, "Bong! Scan answer wrong"))
-      case (INSERT_DATA, _) =>
+      case INSERT_DATA =>
         addToFutures(insertDataCmd(table, database) !!, dataOperationHint)
       case DROP_DATA =>
         addToFutures(dropDataCmd(table, database) !!, dataOperationHint,
