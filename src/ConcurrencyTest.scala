@@ -69,9 +69,25 @@ object ConcurrencyTest {
       res
     }
 
+    def showTableCmd(database: String) = {
+      val cmd = s"show tables"
+      val res = addPrefix(cmd, database)
+      println(s"running: $res")
+      res
+    }
+
+    def showIndexCmd(table: String, database: String) = {
+      val cmd = s"show oindex from $table"
+      val res = addPrefix(cmd, database)
+      println(s"running: $res")
+      res
+    }
+
     // Compute first
     val scanDataRightAnswer = if (codeForData == SCAN_DATA) {
       scanDataCmd(index, table, database) !!
+    } else {
+      _
     }
 
     println(s"************************ " +
@@ -80,7 +96,8 @@ object ConcurrencyTest {
     (codeForData, codeForIndex) match {
       // First submit the drop/insert operation, this order is more likely to produce exceptions
       case (DROP_DATA, _) =>
-        addToFutures(dropDataCmd(table, database) !!, dataOperationHint)
+        addToFutures(dropDataCmd(table, database) !!, dataOperationHint,
+          (ans: String) => assert(! (showTableCmd(database) !!).contains(table), "Bong! Table not dropped"))
       case (_, DROP_INDEX) =>
         addToFutures(dropIndexCmd(index, table, database) !!, indexOperationHint)
       case (INSERT_DATA, _) =>
@@ -89,7 +106,7 @@ object ConcurrencyTest {
         addToFutures(refreshIndexCmd(index, table, database) !!, indexOperationHint)
       case (SCAN_DATA, _) =>
         addToFutures(scanDataCmd(index, table, database) !!, dataOperationHint,
-          (ans: String) => assert(ans == scanDataRightAnswer))
+          (ans: String) => assert(ans == scanDataRightAnswer, "Bong! Scan answer wrong"))
     }
 
     waitForTheEndAndPrintResAndClear
