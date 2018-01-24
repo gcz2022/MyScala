@@ -134,9 +134,9 @@ object ConcurrencyTest {
   }
 
   def waitForTheEndAndPrintResAndClear = {
+    Await.result(Future.sequence(futures.map(_._1)), Duration.Inf)
     futures.foreach {
       future =>
-        Await.result(future._1, Duration.Inf)
         future._1.onComplete {
           case Success(value) => /* future._3 does assertion*/
             future._3(value)
