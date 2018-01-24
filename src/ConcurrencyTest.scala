@@ -12,7 +12,7 @@ object ConcurrencyTest {
   val tables = List("store_sales")
   val filterColumn = "ss_item_sk"
   val indices = List("store_sales_ss_item_sk1_index", "store_sales_ss_ticket_number_index")
-  val futures = mutable.ArrayBuffer[(Future[Int], String)]()
+  val futures = mutable.ArrayBuffer[(Future[String], String, (String) => Unit)]()
 
   val REFRESH_INDEX = 1
   val DROP_INDEX = 2
@@ -29,10 +29,8 @@ object ConcurrencyTest {
   dataHintsMap += INSERT_DATA -> "insert data"
   dataHintsMap += DROP_DATA -> "drop data"
 
-  def addToFutures[T](func: => Int, hints: String) = {
-    futures += Future {
-      func
-    } -> hints
+  def addToFutures[T](func: => String, hints: String, assertion: (String) => Unit = (String) => {}) = {
+    futures += ((Future(func), hints, assertion))
   }
 
   def addPrefix(cmd: String, database: String): Seq[String] = {
@@ -49,7 +47,7 @@ object ConcurrencyTest {
     indexOperationHint: String) = {
 
     def scanDataCmd(index: String, table: String, database: String) = {
-      val cmd = s"select * from $table where $filterColumn < 20"
+      val cmd = s"select $filterColumn from $table where $filterColumn < 20 order by $filterColumn"
       val res = addPrefix(cmd, database)
       println(s"running: $res")
       res
@@ -71,21 +69,27 @@ object ConcurrencyTest {
       res
     }
 
+    // Compute first
+    val scanDataRightAnswer = if (codeForData == SCAN_DATA) {
+      scanDataCmd(index, table, database) !!
+    }
+
     println(s"************************ " +
       s"Testing $indexOperationHint & $dataOperationHint ************************")
 
     (codeForData, codeForIndex) match {
       // First submit the drop/insert operation, this order is more likely to produce exceptions
       case (DROP_DATA, _) =>
-        addToFutures(dropDataCmd(table, database) !, dataOperationHint)
+        addToFutures(dropDataCmd(table, database) !!, dataOperationHint)
       case (_, DROP_INDEX) =>
-        addToFutures(dropIndexCmd(index, table, database) !, indexOperationHint)
+        addToFutures(dropIndexCmd(index, table, database) !!, indexOperationHint)
       case (INSERT_DATA, _) =>
-        addToFutures(insertDataCmd(table, database) !, dataOperationHint)
+        addToFutures(insertDataCmd(table, database) !!, dataOperationHint)
       case (_, REFRESH_INDEX) =>
-        addToFutures(refreshIndexCmd(index, table, database) !, indexOperationHint)
+        addToFutures(refreshIndexCmd(index, table, database) !!, indexOperationHint)
       case (SCAN_DATA, _) =>
-        addToFutures(scanDataCmd(index, table, database) !, dataOperationHint)
+        addToFutures(scanDataCmd(index, table, database) !!, dataOperationHint,
+          (ans: String) => assert(ans == scanDataRightAnswer))
     }
 
     waitForTheEndAndPrintResAndClear
@@ -114,7 +118,9 @@ object ConcurrencyTest {
       future =>
         Await.result(future._1, Duration.Inf)
         future._1.onComplete {
-          case Success(value) => println(s"Successfully exec ${future._2}")
+          case Success(value) => /* future._3 does assertion*/
+            future._3(value)
+            println(s"Successfully exec ${future._2}")
           case Failure(e) => println(s"Failed exec ${future._2}"); e.printStackTrace
         }
     }
@@ -132,36 +138,39 @@ object ConcurrencyTest {
   def refreshOrDropIndicesFromSameTable(indices: Seq[String], table: String, database: String) = {
     println(s"************************ " +
       s"Testing drop indicies from same table ************************")
-    addToFutures(dropIndexCmd(indices(0), table, database) !,
+    addToFutures(dropIndexCmd(indices(0), table, database) !!,
       s"Drop index ${indices(0)} of table $table, database $database")
-    addToFutures(dropIndexCmd(indices(1), table, database) !,
+    addToFutures(dropIndexCmd(indices(1), table, database) !!,
       s"Drop index ${indices(1)} of table $table, database $database")
     waitForTheEndAndPrintResAndClear
+    rebuildIndex
 
     println(s"************************ " +
       s"Testing drop index and refresh index from same table ************************")
-    addToFutures(dropIndexCmd(indices(0), table, database) !,
+    addToFutures(dropIndexCmd(indices(0), table, database) !!,
       s"Drop index ${indices(0)} of table $table, database $database")
-    addToFutures(refreshIndexCmd(indices(1), table, database) !,
+    addToFutures(refreshIndexCmd(indices(1), table, database) !!,
       s"Refresh index ${indices(1)} of table $table, database $database")
     waitForTheEndAndPrintResAndClear
+    rebuildIndex
 
     println(s"************************ " +
       s"Testing refresh indicies from same table ************************")
-    addToFutures(refreshIndexCmd(indices(0), table, database) !,
+    addToFutures(refreshIndexCmd(indices(0), table, database) !!,
       s"Refresh index ${indices(0)} of table $table, database $database")
-    addToFutures(refreshIndexCmd(indices(1), table, database) !,
+    addToFutures(refreshIndexCmd(indices(1), table, database) !!,
       s"Refresh index ${indices(1)} of table $table, database $database")
     waitForTheEndAndPrintResAndClear
+    rebuildIndex
   }
 
   def regenData = {
-    addToFutures(regenDataScript !, "Regen data")
+    addToFutures(regenDataScript !!, "Regen data")
     waitForTheEndAndPrintResAndClear
   }
 
   def rebuildIndex = {
-    addToFutures(rebuildIndexScript !, "Rebuild index")
+    addToFutures(rebuildIndexScript !!, "Rebuild index")
     waitForTheEndAndPrintResAndClear
   }
 
@@ -184,7 +193,7 @@ object ConcurrencyTest {
       val database = s"${format}tpcds${scale}"
       for (table <- tables) {
         val index = indices(0)
-          refreshOrDropIndicesFromSameTable(indices, table, database)
+//          refreshOrDropIndicesFromSameTable(indices, table, database)
 //        dropDataAndRefreshIndex(index, table, database)
         for (indexOps <- testIndexOpsSet) {
           for (dataOps <- testDataOpsSet) {
