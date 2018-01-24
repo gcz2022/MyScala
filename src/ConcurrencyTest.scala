@@ -93,20 +93,23 @@ object ConcurrencyTest {
     println(s"************************ " +
       s"Testing $indexOperationHint & $dataOperationHint ************************")
 
-    (codeForData, codeForIndex) match {
-      // First submit the drop/insert operation, this order is more likely to produce exceptions
-      case (DROP_DATA, _) =>
-        addToFutures(dropDataCmd(table, database) !!, dataOperationHint,
-          (ans: String) => assert(! (showTableCmd(database) !!).contains(table), "Bong! Table not dropped"))
-      case (_, DROP_INDEX) =>
-        addToFutures(dropIndexCmd(index, table, database) !!, indexOperationHint)
-      case (INSERT_DATA, _) =>
-        addToFutures(insertDataCmd(table, database) !!, dataOperationHint)
-      case (_, REFRESH_INDEX) =>
-        addToFutures(refreshIndexCmd(index, table, database) !!, indexOperationHint)
+    codeForData match {
       case (SCAN_DATA, _) =>
         addToFutures(scanDataCmd(index, table, database) !!, dataOperationHint,
           (ans: String) => assert(ans == scanDataRightAnswer, "Bong! Scan answer wrong"))
+      case (INSERT_DATA, _) =>
+        addToFutures(insertDataCmd(table, database) !!, dataOperationHint)
+      case DROP_DATA =>
+        addToFutures(dropDataCmd(table, database) !!, dataOperationHint,
+          (ans: String) => assert(! (showTableCmd(database) !!).contains(table), "Bong! Table not dropped"))
+    }
+
+    codeForIndex match {
+      case REFRESH_INDEX =>
+        addToFutures(refreshIndexCmd(index, table, database) !!, indexOperationHint)
+      case DROP_INDEX =>
+        addToFutures(dropIndexCmd(index, table, database) !!, indexOperationHint,
+          (ans: String) => assert(! (showIndexCmd(table, database) !!).contains(index), "Bong! Index not dropped"))
     }
 
     waitForTheEndAndPrintResAndClear
