@@ -137,7 +137,7 @@ object ConcurrencyTest {
         future._1.onComplete {
           case Success(value) => /* future._3 does assertion*/
             future._3(value)
-            println(s"Successfully exec ${future._2}")
+            println(s"Assertion passed ${future._2}")
           case Failure(e) => println(s"Failed exec ${future._2}"); e.printStackTrace
         }
     }
