@@ -1,8 +1,8 @@
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import sys.process._
 import scala.concurrent.ExecutionContext.Implicits.global
+import sys.process._
 
 object ConcurrencyTest {
   val scale = 30
@@ -21,13 +21,15 @@ object ConcurrencyTest {
   val INSERT_DATA = 2
   val DROP_DATA = 3
 
-  val indexHintsMap = mutable.HashMap[Int, String]()
-  indexHintsMap += REFRESH_INDEX -> "refresh index"
-  indexHintsMap += DROP_INDEX -> "drop index"
-  val dataHintsMap = mutable.HashMap[Int, String]()
-  dataHintsMap += SCAN_DATA -> "scan data"
-  dataHintsMap += INSERT_DATA -> "insert data"
-  dataHintsMap += DROP_DATA -> "drop data"
+  val indexHintsMap = mutable.HashMap[Int, String](
+    REFRESH_INDEX -> "refresh index",
+    DROP_INDEX -> "drop index"
+  )
+  val dataHintsMap = mutable.HashMap[Int, String](
+    SCAN_DATA -> "scan data",
+    INSERT_DATA -> "insert data",
+    DROP_DATA -> "drop data"
+  )
 
   def addToFutures[T](func: => String, hints: String, assertion: (String) => Unit = (String) => {}) = {
     futures += ((Future(func), hints, assertion))
@@ -105,7 +107,7 @@ object ConcurrencyTest {
           (ans: String) => assert(! (showIndexCmd(table, database) !!).contains(index), "Bong! Index not dropped"))
     }
 
-    waitForTheEndAndPrintResAndClear
+    waitForTheEndAndCheckAssertAndClear
   }
 
   def showIndexCmd(table: String, database: String) = {
@@ -133,7 +135,7 @@ object ConcurrencyTest {
     res
   }
 
-  def waitForTheEndAndPrintResAndClear = {
+  def waitForTheEndAndCheckAssertAndClear = {
     futures.foreach {
       future => try {
         val value = Await.result(future._1, Duration.Inf)
@@ -145,14 +147,6 @@ object ConcurrencyTest {
       }
     }
     futures.clear()
-  }
-
-  def dropDataAndRefreshIndex(index: String, table: String, database: String) = {
-    testDataAndIndexOperation(
-      DROP_DATA, REFRESH_INDEX,
-      index, table, database,
-      s"drop table $table, database $database",
-      s"Refresh index $index, table $table, database $database")
   }
 
   def refreshOrDropIndicesFromSameTable(indices: Seq[String], table: String, database: String) = {
@@ -174,7 +168,7 @@ object ConcurrencyTest {
     addToFutures(dropIndexCmd(indices(1), table, database) !!,
       s"Drop index ${indices(1)} of table $table, database $database",
         dropIndexAssertion1)
-    waitForTheEndAndPrintResAndClear
+    waitForTheEndAndCheckAssertAndClear
     rebuildIndex
 
     println(s"************************ " +
@@ -184,7 +178,7 @@ object ConcurrencyTest {
         dropIndexAssertion0)
     addToFutures(refreshIndexCmd(indices(1), table, database) !!,
     s"Refresh index ${indices(1)} of table $table, database $database")
-    waitForTheEndAndPrintResAndClear
+    waitForTheEndAndCheckAssertAndClear
     rebuildIndex
 
     println(s"************************ " +
@@ -193,20 +187,18 @@ object ConcurrencyTest {
     s"Refresh index ${indices(0)} of table $table, database $database")
     addToFutures(refreshIndexCmd(indices(1), table, database) !!,
     s"Refresh index ${indices(1)} of table $table, database $database")
-    waitForTheEndAndPrintResAndClear
+    waitForTheEndAndCheckAssertAndClear
     rebuildIndex
   }
 
   def regenData = {
-    println("In regening")
-    addToFutures(regenDataScript !!, "Regen data")
-    waitForTheEndAndPrintResAndClear
+    println("Regening data")
+    regenDataScript !
   }
 
   def rebuildIndex = {
-    println("In rebuilding index")
-    addToFutures(rebuildIndexScript !!, "Rebuild index")
-    waitForTheEndAndPrintResAndClear
+    println("Rebuilding index")
+    rebuildIndexScript !
   }
 
   var rebuildIndexScript: String = _
@@ -229,7 +221,6 @@ object ConcurrencyTest {
       for (table <- tables) {
         val index = indices(0)
         refreshOrDropIndicesFromSameTable(indices, table, database)
-        dropDataAndRefreshIndex(index, table, database)
         for (indexOps <- testIndexOpsSet) {
           for (dataOps <- testDataOpsSet) {
             val indexHint = indexHintsMap(indexOps)
