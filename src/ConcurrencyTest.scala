@@ -1,3 +1,4 @@
+import scala.collection.immutable.HashMap
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
@@ -21,11 +22,11 @@ object ConcurrencyTest {
   val INSERT_DATA = 2
   val DROP_DATA = 3
 
-  val indexHintsMap = mutable.HashMap[Int, String](
+  val indexHintsMap = HashMap[Int, String](
     REFRESH_INDEX -> "refresh index",
     DROP_INDEX -> "drop index"
   )
-  val dataHintsMap = mutable.HashMap[Int, String](
+  val dataHintsMap = HashMap[Int, String](
     SCAN_DATA -> "scan data",
     INSERT_DATA -> "insert data",
     DROP_DATA -> "drop data"
@@ -82,7 +83,7 @@ object ConcurrencyTest {
     val scanDataRightAnswer = if (codeForData == SCAN_DATA) {
       scanDataCmd(index, table, database) !!
     } else {
-      "No answer"
+      "No need"
     }
 
     println(s"************************ " +
@@ -209,10 +210,10 @@ object ConcurrencyTest {
     rebuildIndexScript = args(0)
     regenDataScript = args(1)
 
-    // Default to test all cases
     val (testIndexOpsSet, testDataOpsSet) = if (args.length > 2) {
       (Set(args(2).toInt), Set(args(3).toInt))
     } else {
+      // Default to test all cases
       (Set(REFRESH_INDEX, DROP_INDEX), Set(SCAN_DATA, INSERT_DATA, DROP_DATA))
     }
 
